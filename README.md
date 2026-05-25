@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Browser Crypto Mining Research
 
 > Consent-first web mining as a monetization layer — empirical benchmarks, revenue models, and implementation baseline.
@@ -154,3 +155,6 @@ Developer PiTi claims 30-50% higher profitability via GhostRider auto-algo switc
 ---
 
 *All revenue figures are gross estimates pre-electricity, fees, slippage, and taxes. Recalculate at time of deployment using current network hashrate, XMR price, and block reward.*
+=======
+# limadilemma
+>>>>>>> 43bea92117a19fb7dc292693b035111c39a3be47
