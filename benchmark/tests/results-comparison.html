@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mining Benchmark — Results Comparison</title>
+<style>
+  body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  h1 { color: #f0c040; font-size: 20px; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 12px; margin-bottom: 28px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 32px; }
+  th { background: #1a1a1a; padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #888; border-bottom: 2px solid #333; }
+  th.script { color: #f0c040; }
+  td { padding: 10px 14px; border-bottom: 1px solid #1a1a1a; vertical-align: top; }
+  tr:hover td { background: #111; }
+  td.label { color: #666; width: 200px; font-size: 11px; }
+  td input { background: #111; border: 1px solid #333; border-radius: 4px; padding: 5px 8px; color: #fff; font-family: monospace; font-size: 12px; width: 100%; }
+  td input:focus { outline: none; border-color: #f0c040; }
+  .section-header { background: #0a0a0a; }
+  .section-header td { color: #f0c040; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: .1em; padding: 8px 14px; border-top: 1px solid #333; }
+  .verdict { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+  .verdict.win { background: #0a3a0a; color: #4fc; border: 1px solid #4fc; }
+  .verdict.mid { background: #2a2a0a; color: #f0c040; border: 1px solid #f0c040; }
+  .verdict.low { background: #2a0a0a; color: #f44; border: 1px solid #f44; }
+  .summary { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+  .summary h2 { color: #f0c040; font-size: 15px; margin: 0 0 16px; }
+  .btn { background: #f0c040; color: #000; border: none; border-radius: 4px; padding: 8px 20px; font-size: 13px; font-weight: bold; cursor: pointer; margin-right: 8px; }
+  .btn.secondary { background: #333; color: #ccc; }
+  .paste-area { background: #111; border: 1px solid #333; border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+  .paste-area textarea { width: 100%; background: transparent; border: none; color: #4fc; font-family: monospace; font-size: 11px; height: 80px; resize: vertical; outline: none; }
+  .paste-area .label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+  .note { font-size: 11px; color: #666; margin-top: 4px; }
+  .algo-diff-warning { background: #1a0a00; border: 1px solid #f0c040; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #f0c040; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<h1>⛏ Browser Mining Benchmark — Results Comparison</h1>
+<div class="subtitle">Fill in after running all 3 harnesses · 90s runs · 50% throttle · Same machine</div>
+
+<div class="algo-diff-warning">
+  ⚠️ <strong>Algorithm difference:</strong> opd-ai/webminer runs <strong>RandomX</strong> (XMR) while the other two run <strong>GhostRider</strong> (RTM).
+  Raw H/s numbers are <strong>NOT directly comparable</strong> between algorithms — RandomX H/s ≠ GhostRider H/s.
+  Compare within-algo pairs, and use the qualitative columns (worker delivery, callbacks, errors) for cross-script comparison.
+</div>
+
+<!-- Paste JSON from each harness -->
+<div class="summary">
+  <h2>📋 Paste Results JSON (optional — auto-fills table)</h2>
+  <div class="grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    <div class="paste-area">
+      <div class="label">opd-ai/webminer JSON</div>
+      <textarea id="json-1" placeholder='{"script":"opd-ai/webminer",...}'></textarea>
+    </div>
+    <div class="paste-area">
+      <div class="label">Crypto-Webminer JSON</div>
+      <textarea id="json-2" placeholder='{"script":"PiTi2k5/Crypto-Webminer",...}'></textarea>
+    </div>
+    <div class="paste-area">
+      <div class="label">cpu-web-miner JSON</div>
+      <textarea id="json-3" placeholder='{"script":"MarcoCiaramella/cpu-web-miner",...}'></textarea>
+    </div>
+  </div>
+  <button class="btn" onclick="autoFill()">⚡ Auto-fill from JSON</button>
+  <button class="btn secondary" onclick="clearAll()">✕ Clear all</button>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th class="script">opd-ai/webminer<br><span style="color:#666;font-size:9px">RandomX / XMR</span></th>
+      <th class="script">Crypto-Webminer<br><span style="color:#666;font-size:9px">GhostRider / RTM</span></th>
+      <th class="script">cpu-web-miner<br><span style="color:#666;font-size:9px">GhostRider / RTM</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="section-header"><td colspan="4">⚡ Performance</td></tr>
+    <tr>
+      <td class="label">Avg Hashrate (H/s)</td>
+      <td><input id="r1-avg" placeholder="e.g. 12.5"></td>
+      <td><input id="r2-avg" placeholder="e.g. 8.2"></td>
+      <td><input id="r3-avg" placeholder="e.g. 9.1"></td>
+    </tr>
+    <tr>
+      <td class="label">Peak Hashrate (H/s)</td>
+      <td><input id="r1-peak" placeholder="—"></td>
+      <td><input id="r2-peak" placeholder="—"></td>
+      <td><input id="r3-peak" placeholder="—"></td>
+    </tr>
+    <tr>
+      <td class="label">Min Hashrate (H/s)</td>
+      <td><input id="r1-min" placeholder="—"></td>
+      <td><input id="r2-min" placeholder="—"></td>
+      <td><input id="r3-min" placeholder="—"></td>
+    </tr>
+    <tr>
+      <td class="label">Startup Latency (ms)</td>
+      <td><input id="r1-startup" placeholder="—"></td>
+      <td><input id="r2-startup" placeholder="—"></td>
+      <td><input id="r3-startup" placeholder="—"></td>
+    </tr>
+    <tr>
+      <td class="label">Samples Collected</td>
+      <td><input id="r1-samples" placeholder="—"></td>
+      <td><input id="r2-samples" placeholder="—"></td>
+      <td><input id="r3-samples" placeholder="—"></td>
+    </tr>
+
+    <tr class="section-header"><td colspan="4">🔗 Session / Worker Attribution</td></tr>
+    <tr>
+      <td class="label">Worker Name Method</td>
+      <td><input id="r1-worker-method" value="wallet string hack (wallet.worker)"></td>
+      <td><input id="r2-worker-method" value="address string (wallet.worker)"></td>
+      <td><input id="r3-worker-method" value="stratum.worker direct ✓"></td>
+    </tr>
+    <tr>
+      <td class="label">Worker Delivered to Pool?</td>
+      <td><input id="r1-worker-delivered" placeholder="YES / NO / PARTIAL — check proxy console"></td>
+      <td><input id="r2-worker-delivered" placeholder="YES / NO — check pool dashboard"></td>
+      <td><input id="r3-worker-delivered" placeholder="YES / NO — check pool dashboard"></td>
+    </tr>
+    <tr>
+      <td class="label">Worker Name Visible on Pool</td>
+      <td><input id="r1-worker-pool" placeholder="—"></td>
+      <td><input id="r2-worker-pool" placeholder="—"></td>
+      <td><input id="r3-worker-pool" placeholder="—"></td>
+    </tr>
+
+    <tr class="section-header"><td colspan="4">📡 API Surface</td></tr>
+    <tr>
+      <td class="label">Callbacks Fired</td>
+      <td><input id="r1-callbacks" placeholder="getStats() call count"></td>
+      <td><input id="r2-callbacks" placeholder="hashrate callback count"></td>
+      <td><input id="r3-callbacks" placeholder="onWork + onHashrate count"></td>
+    </tr>
+    <tr>
+      <td class="label">API Worked As Documented?</td>
+      <td><input id="r1-api" placeholder="YES / NO / PARTIAL"></td>
+      <td><input id="r2-api" placeholder="YES / NO / PARTIAL"></td>
+      <td><input id="r3-api" placeholder="YES / NO / PARTIAL"></td>
+    </tr>
+    <tr>
+      <td class="label">Undocumented Behavior Observed</td>
+      <td><input id="r1-undoc" placeholder="notes..."></td>
+      <td><input id="r2-undoc" placeholder="notes..."></td>
+      <td><input id="r3-undoc" placeholder="notes..."></td>
+    </tr>
+
+    <tr class="section-header"><td colspan="4">🛡 Reliability</td></tr>
+    <tr>
+      <td class="label">Errors / Exceptions</td>
+      <td><input id="r1-errors" placeholder="0"></td>
+      <td><input id="r2-errors" placeholder="0"></td>
+      <td><input id="r3-errors" placeholder="0"></td>
+    </tr>
+    <tr>
+      <td class="label">Connected to Pool?</td>
+      <td><input id="r1-connected" placeholder="YES / NO"></td>
+      <td><input id="r2-connected" placeholder="YES / NO"></td>
+      <td><input id="r3-connected" placeholder="YES / NO"></td>
+    </tr>
+    <tr>
+      <td class="label">WASM Active?</td>
+      <td><input id="r1-wasm" placeholder="YES / NO — check F12 console"></td>
+      <td><input id="r2-wasm" placeholder="YES / NO"></td>
+      <td><input id="r3-wasm" placeholder="YES / NO"></td>
+    </tr>
+    <tr>
+      <td class="label">Ran Full 90s Without Crash?</td>
+      <td><input id="r1-stable" placeholder="YES / NO"></td>
+      <td><input id="r2-stable" placeholder="YES / NO"></td>
+      <td><input id="r3-stable" placeholder="YES / NO"></td>
+    </tr>
+
+    <tr class="section-header"><td colspan="4">🏁 Verdict</td></tr>
+    <tr>
+      <td class="label">Overall Verdict</td>
+      <td><input id="r1-verdict" placeholder="e.g. VIABLE / PATCH NEEDED / FAILED"></td>
+      <td><input id="r2-verdict" placeholder="—"></td>
+      <td><input id="r3-verdict" placeholder="—"></td>
+    </tr>
+    <tr>
+      <td class="label">Notes</td>
+      <td><input id="r1-notes" placeholder="free text..."></td>
+      <td><input id="r2-notes" placeholder="free text..."></td>
+      <td><input id="r3-notes" placeholder="free text..."></td>
+    </tr>
+  </tbody>
+</table>
+
+<button class="btn" onclick="exportResults()">📤 Export Full Results JSON</button>
+<button class="btn secondary" onclick="window.print()">🖨 Print</button>
+
+<script>
+function autoFill() {
+  [['json-1', '1'], ['json-2', '2'], ['json-3', '3']].forEach(([jsonId, idx]) => {
+    const raw = document.getElementById(jsonId).value.trim();
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw);
+      const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
+      set(`r${idx}-avg`, d.avg_hashrate);
+      set(`r${idx}-peak`, d.peak_hashrate);
+      set(`r${idx}-startup`, d.startup_latency_ms);
+      set(`r${idx}-samples`, d.samples ? d.samples.length : '');
+      set(`r${idx}-callbacks`, d.callbacks || (d.onWork_callbacks ? `onWork:${d.onWork_callbacks} onHash:${d.onHashrate_callbacks}` : ''));
+      if (d.worker_method) set(`r${idx}-worker-method`, d.worker_method);
+      if (d.stratum_worker) set(`r${idx}-worker-delivered`, 'SET: ' + d.stratum_worker);
+      if (d.samples && d.samples.length) {
+        const nums = d.samples.map(Number).filter(n => !isNaN(n));
+        if (nums.length) set(`r${idx}-min`, Math.min(...nums).toFixed(2));
+      }
+    } catch(e) {
+      alert('JSON parse error in field ' + jsonId + ': ' + e.message);
+    }
+  });
+}
+
+function clearAll() {
+  document.querySelectorAll('td input').forEach(el => {
+    if (!['r1-worker-method','r2-worker-method','r3-worker-method'].includes(el.id)) el.value = '';
+  });
+}
+
+function exportResults() {
+  const get = id => document.getElementById(id)?.value || '';
+  const data = {
+    exported_at: new Date().toISOString(),
+    scripts: [
+      { name: 'opd-ai/webminer', algo: 'RandomX', avg: get('r1-avg'), peak: get('r1-peak'), min: get('r1-min'), startup_ms: get('r1-startup'), samples: get('r1-samples'), worker_method: get('r1-worker-method'), worker_delivered: get('r1-worker-delivered'), worker_pool: get('r1-worker-pool'), callbacks: get('r1-callbacks'), api_ok: get('r1-api'), undoc: get('r1-undoc'), errors: get('r1-errors'), connected: get('r1-connected'), wasm: get('r1-wasm'), stable: get('r1-stable'), verdict: get('r1-verdict'), notes: get('r1-notes') },
+      { name: 'PiTi2k5/Crypto-Webminer', algo: 'GhostRider', avg: get('r2-avg'), peak: get('r2-peak'), min: get('r2-min'), startup_ms: get('r2-startup'), samples: get('r2-samples'), worker_method: get('r2-worker-method'), worker_delivered: get('r2-worker-delivered'), worker_pool: get('r2-worker-pool'), callbacks: get('r2-callbacks'), api_ok: get('r2-api'), undoc: get('r2-undoc'), errors: get('r2-errors'), connected: get('r2-connected'), wasm: get('r2-wasm'), stable: get('r2-stable'), verdict: get('r2-verdict'), notes: get('r2-notes') },
+      { name: 'MarcoCiaramella/cpu-web-miner', algo: 'GhostRider', avg: get('r3-avg'), peak: get('r3-peak'), min: get('r3-min'), startup_ms: get('r3-startup'), samples: get('r3-samples'), worker_method: get('r3-worker-method'), worker_delivered: get('r3-worker-delivered'), worker_pool: get('r3-worker-pool'), callbacks: get('r3-callbacks'), api_ok: get('r3-api'), undoc: get('r3-undoc'), errors: get('r3-errors'), connected: get('r3-connected'), wasm: get('r3-wasm'), stable: get('r3-stable'), verdict: get('r3-verdict'), notes: get('r3-notes') }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mining_benchmark_results.json';
+  a.click();
+}
+</script>
+</body>
+</html>

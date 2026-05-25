@@ -1,0 +1,37 @@
+{
+  "last_updated": "2026-05-18",
+  "results": [
+    {
+      "id": "randomx-max-FINAL",
+      "label": "randomx.js — 6 threads optimized",
+      "script": "l1mey112/randomx.js",
+      "algo": "RandomX",
+      "coin": "XMR",
+      "date": "2026-05-18",
+      "avg_hs": 31.02,
+      "peak_hs": 38.64,
+      "threads": 6,
+      "wasm": true,
+      "startup_ms": 1496,
+      "accepted_shares": 2,
+      "samples": [0,0,0,34.47,34.47,34.47,38.64,38.07,37.86,37.65,37.58,37.53,37.48,36.11,35.55],
+      "notes": "6 Web Workers · JIT WASM · No throttle · 90s · Chrome 148 · Windows 10 · Ryzen 5-class 6-core"
+    },
+    {
+      "id": "opd-webminer-FINAL",
+      "label": "opd-ai/webminer — JS fallback (no throttle)",
+      "script": "opd-ai/webminer",
+      "algo": "RandomX",
+      "coin": "XMR",
+      "date": "2026-05-18",
+      "avg_hs": 8.70,
+      "peak_hs": 18.53,
+      "threads": "internal",
+      "wasm": false,
+      "startup_ms": 33445,
+      "accepted_shares": 0,
+      "samples": [0,0,0,0,0,0,0.03,2.99,6.44,9.05,11.08,12.21,13.65,14.85,15.86,16.74,17.25,18.53],
+      "notes": "JS fallback only · WASM permanently unavailable for RandomX · 90s · Chrome 148 · Windows 10 · Ryzen 5-class 6-core"
+    }
+  ]
+}

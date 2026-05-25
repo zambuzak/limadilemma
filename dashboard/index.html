@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser Crypto Mining — Research Dashboard v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Instrument+Serif:ital@0;1&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0B0B0F;--s1:#111118;--s2:#18181F;--s3:#1E1E28;--border:#2C2C3A;
+  --ink:#EEEAE4;--ink2:#9995A0;--ink3:#5A5860;
+  --gold:#E8B84B;--gold-d:#C49628;--gold-bg:rgba(232,184,75,.08);--gold-border:rgba(232,184,75,.22);
+  --green:#2ECC8A;--green-bg:rgba(46,204,138,.08);--green-border:rgba(46,204,138,.22);
+  --red:#E85A4B;--red-bg:rgba(232,90,75,.08);--red-border:rgba(232,90,75,.22);
+  --blue:#5A8EE8;--blue-bg:rgba(90,142,232,.08);--blue-border:rgba(90,142,232,.22);
+  --purple:#A078E8;--purple-bg:rgba(160,120,232,.08);--purple-border:rgba(160,120,232,.22);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6;min-height:100vh;}
+.hdr{padding:56px 56px 48px;position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+.hdr::before{content:'';position:absolute;top:-120px;right:-120px;width:500px;height:500px;background:radial-gradient(circle,rgba(232,184,75,.06) 0%,transparent 65%);pointer-events:none;}
+.hdr-eyebrow{display:inline-flex;align-items:center;gap:8px;background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:4px;padding:5px 14px;font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;margin-bottom:20px;}
+.hdr-eyebrow::before{content:'';width:6px;height:6px;background:var(--gold);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hdr h1{font-family:'Instrument Serif',serif;font-size:52px;line-height:1.05;max-width:700px;letter-spacing:-.02em;}
+.hdr h1 em{color:var(--gold);font-style:italic;}
+.hdr-sub{font-size:15px;color:var(--ink2);max-width:560px;margin-top:12px;line-height:1.7;font-weight:400;}
+.hdr-meta-row{display:flex;align-items:center;justify-content:space-between;margin-top:36px;gap:24px;flex-wrap:wrap;}
+.hdr-pills{display:flex;gap:8px;flex-wrap:wrap;}
+.hdr-pill{padding:6px 14px;border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--ink2);font-family:'DM Mono',monospace;}
+.hdr-stats{display:flex;gap:2px;}
+.stat-block{padding:16px 24px;border:1px solid var(--border);background:var(--s1);text-align:center;}
+.stat-block:first-child{border-radius:8px 0 0 8px;}
+.stat-block:last-child{border-radius:0 8px 8px 0;}
+.stat-block .n{font-family:'Instrument Serif',serif;font-size:30px;color:var(--gold);line-height:1;}
+.stat-block .l{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-top:3px;}
+.nav{background:var(--s1);border-bottom:1px solid var(--border);padding:0 56px;display:flex;position:sticky;top:0;z-index:100;overflow-x:auto;}
+.nav-tab{padding:16px 20px;font-size:12px;font-weight:600;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;letter-spacing:.04em;text-transform:uppercase;}
+.nav-tab:hover{color:var(--ink);}
+.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.content{padding:48px 56px;max-width:1440px;}
+.tab-panel{display:none;animation:fadeIn .2s ease;}
+.tab-panel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sh{margin-bottom:40px;}
+.sh-title{font-family:'Instrument Serif',serif;font-size:32px;letter-spacing:-.01em;}
+.sh-sub{font-size:13px;color:var(--ink2);margin-top:4px;}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:28px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.mb20{margin-bottom:20px;}
+.mb32{margin-bottom:32px;}
+.mb48{margin-bottom:48px;}
+.tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.05em;font-family:'DM Mono',monospace;}
+.tag-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.tag-gold{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-border);}
+.tag-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);}
+.tag-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);}
+.tag-gray{background:var(--s2);color:var(--ink2);border:1px solid var(--border);}
+.tag-purple{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border);}
+
+/* REVENUE CALCULATOR */
+.rev-hero{background:linear-gradient(135deg,var(--s2) 0%,var(--s1) 100%);border:1px solid var(--border);border-radius:16px;padding:40px;margin-bottom:32px;position:relative;overflow:hidden;}
+.rev-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(232,184,75,.07) 0%,transparent 65%);pointer-events:none;}
+.rev-hero-label{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;}
+.rev-formula{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:6px;padding:10px 16px;display:inline-block;margin-bottom:24px;line-height:1.8;}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
+.calc-grid2{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px;}
+.input-group label{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;}
+.input-group input,
+.input-group select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--ink);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .15s;}
+.input-group input:focus,
+.input-group select:focus{border-color:var(--gold);}
+.input-group .hint{font-size:9px;color:var(--ink3);margin-top:4px;}
+.calc-btn{background:var(--gold);color:#000;border:none;border-radius:6px;padding:10px 20px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.04em;}
+.calc-btn:hover{background:var(--gold-d);}
+.calc-btn.secondary{background:var(--s2);color:var(--ink2);border:1px solid var(--border);}
+.calc-btn.secondary:hover{border-color:var(--gold);color:var(--gold);}
+.rev-output{background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:12px;padding:24px 28px;margin-top:20px;}
+.rev-output-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.rev-out-item .rk{font-size:9px;font-weight:700;color:var(--gold-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+.rev-out-item .rv{font-family:'Instrument Serif',serif;font-size:24px;color:var(--gold);}
+.rev-out-item .rs{font-size:10px;color:var(--gold-d);margin-top:2px;}
+.coin-notice{background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--blue);margin-top:12px;display:none;}
+
+/* IMPORT SECTION */
+.import-box{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-top:24px;}
+.import-box-title{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+.import-row{display:flex;gap:10px;align-items:flex-start;}
+.import-row textarea{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--ink);font-family:'DM Mono',monospace;font-size:11px;height:60px;resize:vertical;outline:none;}
+.import-row textarea:focus{border-color:var(--gold);}
+.import-feedback{font-size:11px;margin-top:6px;display:none;}
+
+/* SCRIPT CARDS */
+.script-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s;margin-bottom:24px;}
+.script-card.winner{border-color:var(--gold-border);}
+.script-header{padding:22px 24px;border-bottom:1px solid var(--border);display:flex;gap:14px;align-items:flex-start;}
+.script-icon{width:44px;height:44px;border-radius:8px;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.script-name{font-family:'Instrument Serif',serif;font-size:20px;line-height:1.2;}
+.script-repo{font-size:10px;color:var(--blue);font-family:'DM Mono',monospace;margin-top:2px;}
+.script-winner-badge{display:inline-flex;align-items:center;gap:4px;background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:3px;padding:3px 9px;font-size:9px;font-weight:700;color:var(--gold);margin-top:6px;letter-spacing:.06em;text-transform:uppercase;}
+.script-body{padding:22px 24px;}
+.score-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.score-label{font-size:11px;color:var(--ink2);width:150px;flex-shrink:0;}
+.score-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.score-fill{height:100%;border-radius:2px;}
+.score-val{font-size:11px;font-family:'DM Mono',monospace;width:18px;text-align:right;}
+.bench-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.bench-row:last-child{border-bottom:none;}
+.bench-k{color:var(--ink3);}
+.bench-v{font-family:'DM Mono',monospace;color:var(--ink);}
+.bench-v.good{color:var(--green);}
+.bench-v.warn{color:var(--gold);}
+.bench-v.bad{color:var(--red);}
+.chain-wrap{background:var(--s2);border-radius:8px;padding:14px 16px;margin-top:14px;}
+.chain-label{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+.chain-steps{display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+.chain-step{padding:4px 10px;border-radius:4px;font-size:10px;font-family:'DM Mono',monospace;}
+.chain-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.chain-broken{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);}
+.chain-arr{color:var(--ink3);font-size:12px;}
+.bc-row{display:grid;grid-template-columns:180px repeat(4,1fr);border-bottom:1px solid var(--border);}
+.bc-row:last-child{border-bottom:none;}
+.bc-cell{padding:11px 14px;font-size:12px;border-right:1px solid var(--border);}
+.bc-cell:last-child{border-right:none;}
+.bc-head .bc-cell{font-size:9px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;background:var(--s2);}
+.bc-label{font-size:11px;color:var(--ink2);}
+.bc-winner{background:var(--gold-bg);}
+.outreach-item{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:12px;}
+.oi-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.oi-name{font-weight:600;font-size:14px;}
+.oi-handle{font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace;}
+.oi-quote{background:var(--s2);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;padding:10px 14px;font-size:12px;color:var(--ink2);line-height:1.6;margin-bottom:8px;}
+.oi-insight{font-size:12px;color:var(--green);background:var(--green-bg);border-radius:4px;padding:6px 10px;}
+.pending-card{background:var(--s1);border:1px solid var(--gold-border);border-radius:12px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden;}
+.pending-card::before{content:'PENDING';position:absolute;top:14px;right:-18px;background:var(--gold);color:#000;font-size:8px;font-weight:800;letter-spacing:.1em;padding:3px 32px;transform:rotate(12deg);}
+.pending-title{font-family:'Instrument Serif',serif;font-size:18px;margin-bottom:8px;}
+.pending-why{font-size:12px;color:var(--ink2);line-height:1.6;margin-bottom:12px;}
+.pending-blocker{border-radius:6px;padding:8px 12px;font-size:11px;}
+.rec-box{background:linear-gradient(135deg,var(--s2),var(--s1));border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:20px;}
+.rec-box.winner{border-color:var(--gold-border);}
+.rec-box h3{font-family:'Instrument Serif',serif;font-size:22px;margin-bottom:8px;}
+.note{background:var(--s2);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;padding:12px 16px;font-size:12px;color:var(--ink2);line-height:1.6;margin-bottom:16px;}
+code{font-family:'DM Mono',monospace;background:var(--s2);padding:2px 6px;border-radius:3px;font-size:11px;color:var(--gold);}
+.coin-table{width:100%;border-collapse:collapse;font-size:12px;}
+.coin-table th{background:var(--s2);padding:10px 14px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);border-bottom:1px solid var(--border);}
+.coin-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.coin-table tr:last-child td{border-bottom:none;}
+.coin-table tr:hover td{background:var(--s2);}
+.algo-chip{display:inline-block;padding:2px 7px;border-radius:3px;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;background:var(--s3);color:var(--ink2);border:1px solid var(--border);}
+@media(max-width:900px){
+  .hdr,.content,.nav{padding:24px 16px;}
+  .hdr h1{font-size:30px;}
+  .hdr-meta-row,.calc-grid,.calc-grid2,.rev-output-grid,.grid2,.grid3,.grid4,.bc-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-eyebrow">⛏ Research Report v2.0 · May 2026</div>
+  <h1>Browser-Based<br>Crypto Mining<br><em>Revenue Model</em></h1>
+  <p class="hdr-sub">Consent-first web mining as a monetization layer. Visitors opt in to mine cryptocurrency in exchange for content access — a value exchange alternative to advertising.</p>
+  <div class="hdr-meta-row">
+    <div class="hdr-pills">
+      <div class="hdr-pill">4 agents · Claude · Gemini · Grok · ChatGPT</div>
+      <div class="hdr-pill">36 coins evaluated</div>
+      <div class="hdr-pill">4 scripts benchmarked</div>
+      <div class="hdr-pill">github.com/limadilemma</div>
+    </div>
+    <div class="hdr-stats">
+      <div class="stat-block"><div class="n" id="hdr-peak">38.64</div><div class="l">Peak H/s</div></div>
+      <div class="stat-block"><div class="n">$1.62</div><div class="l">$/day 1K visitors</div></div>
+      <div class="stat-block"><div class="n">4</div><div class="l">Candidates</div></div>
+      <div class="stat-block"><div class="n">1</div><div class="l">Live Winner</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <div class="nav-tab active" onclick="showTab('revenue',this)">💰 Revenue Model</div>
+  <div class="nav-tab" onclick="showTab('scripts',this)">⚙️ Script Benchmarks</div>
+  <div class="nav-tab" onclick="showTab('compare',this)">📊 Comparison</div>
+  <div class="nav-tab" onclick="showTab('pending',this)">🧪 Pending Tests</div>
+  <div class="nav-tab" onclick="showTab('coins',this)">🪙 Coin Research</div>
+  <div class="nav-tab" onclick="showTab('outreach',this)">💬 Developer Outreach</div>
+  <div class="nav-tab" onclick="showTab('recommendation',this)">🎯 Recommendation</div>
+</div>
+
+<div class="content">
+
+<!-- REVENUE MODEL -->
+<div class="tab-panel active" id="tab-revenue">
+  <div class="sh mb32">
+    <div class="sh-title">Revenue Model</div>
+    <div class="sh-sub">seconds × H/s × visitors — the three levers you control · Calculator auto-updates as new benchmarks are added</div>
+  </div>
+
+  <div class="rev-hero">
+    <div class="rev-hero-label">Core Revenue Formula</div>
+    <div class="rev-formula">
+      revenue_per_1000_sessions =<br>
+      &nbsp;&nbsp;session_seconds × H/s_per_visitor × 1000<br>
+      &nbsp;&nbsp;÷ network_H/s × daily_coin_issuance ÷ 86400 × coin_price
+    </div>
+
+    <div class="calc-grid">
+      <div class="input-group">
+        <label>Script / H/s per visitor</label>
+        <select id="calc-script" onchange="onScriptChange()">
+          <option value="">Loading benchmarks...</option>
+        </select>
+        <div class="hint" id="script-hint"></div>
+      </div>
+      <div class="input-group">
+        <label>Coin</label>
+        <select id="calc-coin" onchange="onCoinChange()">
+          <option value="XMR">Monero (XMR) — RandomX</option>
+          <option value="RTM">Raptoreum (RTM) — GhostRider</option>
+          <option value="DASH_ZPOOL">DASH via zpool Flex — GhostRider auto-algo</option>
+          <option value="custom">Custom</option>
+        </select>
+        <div class="hint" id="coin-hint"></div>
+      </div>
+      <div class="input-group">
+        <label>Session Duration (seconds)</label>
+        <input type="number" id="calc-seconds" value="300" min="1" oninput="calculate()">
+        <div class="hint">5 min = 300s · 15 min = 900s · 1 hr = 3600s</div>
+      </div>
+    </div>
+
+    <div class="calc-grid2">
+      <div class="input-group">
+        <label>H/s per visitor</label>
+        <input type="number" id="calc-hs" value="31.02" step="0.01" oninput="calculate()">
+        <div class="hint">Auto-filled from script selection</div>
+      </div>
+      <div class="input-group">
+        <label>Network H/s</label>
+        <input type="number" id="calc-network" value="5590000000" oninput="calculate()">
+        <div class="hint">Auto-filled per coin</div>
+      </div>
+      <div class="input-group">
+        <label>Daily Coin Issuance</label>
+        <input type="number" id="calc-daily" value="468" step="0.01" oninput="calculate()">
+        <div class="hint">Auto-filled per coin</div>
+      </div>
+      <div class="input-group">
+        <label>Coin Price ($)</label>
+        <input type="number" id="calc-price" value="385" step="0.01" oninput="calculate()">
+        <div class="hint">Update to current price</div>
+      </div>
+    </div>
+
+    <div id="coin-notice" class="coin-notice"></div>
+
+    <div class="rev-output" id="rev-output">
+      <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;">Estimated Gross Revenue — Per 1,000 Sessions</div>
+      <div class="rev-output-grid">
+        <div class="rev-out-item"><div class="rk">Per Second</div><div class="rv" id="out-sec">—</div><div class="rs">1,000 sessions/sec</div></div>
+        <div class="rev-out-item"><div class="rk">Per Minute</div><div class="rv" id="out-min">—</div><div class="rs">1,000 sessions/min</div></div>
+        <div class="rev-out-item"><div class="rk">Per Hour</div><div class="rv" id="out-hour">—</div><div class="rs">1,000 sessions/hr</div></div>
+        <div class="rev-out-item"><div class="rk">Per Day</div><div class="rv" id="out-day">—</div><div class="rs">1,000 sessions/day</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--gold-d);margin-top:12px;">⚠️ Gross estimates — before pool fees (0–1.5%), exchange fees, slippage, electricity, taxes</div>
+    </div>
+
+    <!-- IMPORT NEW RESULT -->
+    <div class="import-box">
+      <div class="import-box-title">📥 Import New Benchmark Result</div>
+      <p style="font-size:11px;color:var(--ink3);margin-bottom:10px;">Paste JSON from a completed benchmark test to add it to the dropdown. Commit the JSON file to <code>benchmark/results/</code> to persist across sessions.</p>
+      <div class="import-row">
+        <textarea id="import-json" placeholder='Paste JSON result here — e.g. {"id":"my-test","label":"My Test","avg_hs":45.2,"peak_hs":52.1,"coin":"XMR","algo":"RandomX","date":"2026-05-19","notes":""}'></textarea>
+        <button class="calc-btn" onclick="importResult()" style="flex-shrink:0;">Import</button>
+      </div>
+      <div class="import-feedback" id="import-feedback"></div>
+    </div>
+  </div>
+
+  <div class="grid3 mb32">
+    <div class="card">
+      <div style="font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">📈 Sessions needed for $10/day</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;" id="scale-table">
+        <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 0;color:var(--ink2);">At 8.7 H/s (opd-ai)</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;">~40,000 sessions</td></tr>
+        <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 0;color:var(--ink2);">At 31 H/s (randomx.js)</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;">~11,200 sessions</td></tr>
+        <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 0;color:var(--ink2);">At 100 H/s (optimized)</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;">~3,500 sessions</td></tr>
+        <tr><td style="padding:7px 0;color:var(--ink2);">At 241 H/s (benchmark)</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;color:var(--gold);">~1,450 sessions</td></tr>
+      </table>
+      <div style="font-size:10px;color:var(--ink3);margin-top:10px;">5 min session · XMR $385 · gross</div>
+    </div>
+    <div class="card">
+      <div style="font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">⏱ Session Duration Impact</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 0;color:var(--ink2);">1 min</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;">$0.22 / 1K sessions</td></tr>
+        <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 0;color:var(--ink2);">5 min</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;">$1.08 / 1K sessions</td></tr>
+        <tr style="border-bottom:1px solid var(--border);"><td style="padding:7px 0;color:var(--ink2);">15 min</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;">$3.24 / 1K sessions</td></tr>
+        <tr><td style="padding:7px 0;color:var(--ink2);">60 min</td><td style="padding:7px 0;text-align:right;font-family:'DM Mono',monospace;color:var(--gold);">$12.96 / 1K sessions</td></tr>
+      </table>
+      <div style="font-size:10px;color:var(--ink3);margin-top:10px;">randomx.js 31 H/s · XMR $385</div>
+    </div>
+    <div class="card">
+      <div style="font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">🎯 Highest ROI Levers</div>
+      <div style="font-size:12px;color:var(--ink2);line-height:1.8;">
+        <div style="margin-bottom:8px;">1. <strong style="color:var(--gold);">Session duration</strong> — linear multiplier on revenue. Doubling dwell time = doubling revenue exactly.</div>
+        <div style="margin-bottom:8px;">2. <strong style="color:var(--gold);">Visitor volume</strong> — scales linearly. 10× visitors = 10× revenue.</div>
+        <div>3. <strong style="color:var(--ink);">H/s per visitor</strong> — diminishing returns past ~100 H/s. Browser ceiling is structural.</div>
+      </div>
+    </div>
+  </div>
+  <div class="note">⚠️ <strong>Pending — Flex/zpool (Crypto-Webminer):</strong> Developer claims 30-50% higher profitability via GhostRider auto-algo on zpool. Blocked by CDN SSL issues. See Pending Tests tab.</div>
+</div>
+
+<!-- SCRIPTS -->
+<div class="tab-panel" id="tab-scripts">
+  <div class="sh mb32"><div class="sh-title">Script Benchmarks</div><div class="sh-sub">Chrome 148 · Windows 10 · Ryzen 5-class 6-core · 90 second runs</div></div>
+  <div id="script-grid"></div>
+</div>
+
+<!-- COMPARE -->
+<div class="tab-panel" id="tab-compare">
+  <div class="sh mb32"><div class="sh-title">Side-by-Side Comparison</div><div class="sh-sub">All 4 candidates across every dimension</div></div>
+  <div class="note">⚠️ RandomX H/s ≠ GhostRider H/s — not directly comparable across algorithms.</div>
+  <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;" class="mb32">
+    <div class="bc-row bc-head">
+      <div class="bc-cell">Criterion</div>
+      <div class="bc-cell">opd-ai/webminer</div>
+      <div class="bc-cell bc-winner">randomx.js ⭐</div>
+      <div class="bc-cell">Crypto-Webminer</div>
+      <div class="bc-cell">cpu-web-miner</div>
+    </div>
+    <div id="compare-rows"></div>
+  </div>
+</div>
+
+<!-- PENDING -->
+<div class="tab-panel" id="tab-pending">
+  <div class="sh mb32"><div class="sh-title">Pending Tests</div><div class="sh-sub">Must complete before final production decision</div></div>
+
+  <div class="pending-card">
+    <div class="pending-title">Crypto-Webminer — Flex Algo / zpool</div>
+    <div class="pending-why">Developer PiTi2k5 recommends Flex algorithm on zpool for 30-50% higher profitability vs RandomX/XMR. Uses GhostRider which runs efficiently in WASM (no 2GB memory constraint). Integration: <code>EverythingIsLife(wallet+'.'+worker, 'c=DASH', 30)</code>. Test harness ready at <code>pending/test-crypto-flex.html</code>.</div>
+    <div class="pending-blocker" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);">🚫 Blocked: All CDN domains (easyhash.de, trustiseverything.de, thelifewillbefine.de) return ERR_CERT_COMMON_NAME_INVALID. ISP-level block (Partner CyberGuard). Awaiting developer response or self-hosted file.</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><span class="tag tag-gold">Flex/native</span><span class="tag tag-gray">zpool</span><span class="tag tag-gray">DASH payout</span><span class="tag tag-red">CDN blocked</span></div>
+  </div>
+
+  <div class="pending-card">
+    <div class="pending-title">randomx.js v2 — Softfloat Implementation</div>
+    <div class="pending-why">Developer l-m confirmed v1 was archived just before completing softfloat (directed IEEE 754 floating-point rounding) support. This is the core WASM limitation for RandomX. v2 with softfloat = expected 2-4x hashrate improvement over current 38.64 H/s peak.</div>
+    <div class="pending-blocker" style="background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue);">🔬 In development — not publicly available. Contact l-m on Discord for timeline.</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><span class="tag tag-purple">RandomX v2</span><span class="tag tag-blue">Softfloat fix</span><span class="tag tag-blue">~2-4x gain</span></div>
+  </div>
+
+  <div class="pending-card">
+    <div class="pending-title">opd-ai/webminer — workerName Patch + WASM Investigation</div>
+    <div class="pending-why">Best consent-first framework but two blockers: (1) no workerName config field — session attribution via wallet string workaround only. (2) WASM always falls back to JS even with correct COOP/COEP headers and crossOriginIsolated=true. GitHub issue opened May 2026.</div>
+    <div class="pending-blocker" style="background:var(--gold-bg);border:1px solid var(--gold-border);color:var(--gold);">⏳ Awaiting developer response. workerName can be patched independently.</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><span class="tag tag-gold">RandomX</span><span class="tag tag-gold">workerName patch</span><span class="tag tag-red">WASM broken</span></div>
+  </div>
+
+  <div class="pending-card">
+    <div class="pending-title">randomx.js-shared — SharedArrayBuffer Cache</div>
+    <div class="pending-why">Opus analysis identified shared cache as the single biggest available optimization (+30-40%). Each of 6 workers currently rebuilds its own 256MB cache = 1.5GB duplicate memory pressure destroying L3 locality. randomx.js-shared package not published on npm — requires building from archived source.</div>
+    <div class="pending-blocker" style="background:var(--purple-bg);border:1px solid var(--purple-border);color:var(--purple);">🔧 Needs source build from archived repo. Requires clang + WASM toolchain.</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"><span class="tag tag-purple">+30-40% gain</span><span class="tag tag-gray">Needs build</span></div>
+  </div>
+</div>
+
+<!-- COINS -->
+<div class="tab-panel" id="tab-coins">
+  <div class="sh mb32"><div class="sh-title">Coin Research</div><div class="sh-sub">36 coins evaluated · 4-tier classification · Ryzen 5 5600 / RTX 3060 baseline</div></div>
+  <div class="note">All revenue = gross/day/1,000 native miners before fees. Browser mining is ~30-40× slower than native.</div>
+  <div style="overflow-x:auto;" class="mb32"><table class="coin-table" id="coin-table"></table></div>
+</div>
+
+<!-- OUTREACH -->
+<div class="tab-panel" id="tab-outreach">
+  <div class="sh mb32"><div class="sh-title">Developer Outreach</div><div class="sh-sub">Direct conversations with script authors</div></div>
+  <div class="outreach-item">
+    <div class="oi-top">
+      <div style="width:36px;height:36px;border-radius:8px;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🔬</div>
+      <div><div class="oi-name">l-m (lm111)</div><div class="oi-handle">randomx.js · Discord · May 19, 2026</div></div>
+      <span class="tag tag-green" style="margin-left:auto;">Responded</span>
+    </div>
+    <div class="oi-quote">"randomx.js was in the best state it was right before the v2 release, so i archived it just before getting softfloat to work fine"</div>
+    <div class="oi-insight">🔬 v2 fixes directed floating-point rounding — the core WASM limitation for RandomX. Expected 2-4x hashrate improvement. Not yet publicly available.</div>
+  </div>
+  <div class="outreach-item">
+    <div class="oi-top">
+      <div style="width:36px;height:36px;border-radius:8px;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🌐</div>
+      <div><div class="oi-name">PiTi2k5</div><div class="oi-handle">Crypto-Webminer · Discord · May 18, 2026</div></div>
+      <span class="tag tag-green" style="margin-left:auto;">Responded</span>
+    </div>
+    <div class="oi-quote">"You should use flex algo on zpool instead moneroocean — around 30% more profitable. Yeah [XMR is tier 1] but not on webmining — because of browser limits."</div>
+    <div class="oi-insight">⚠️ All CDN domains broken. Flex/zpool claim unverified — test pending.</div>
+  </div>
+  <div class="outreach-item">
+    <div class="oi-top">
+      <div style="width:36px;height:36px;border-radius:8px;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🔒</div>
+      <div><div class="oi-name">opd-ai</div><div class="oi-handle">webminer · GitHub Issues · May 2026</div></div>
+      <span class="tag tag-gold" style="margin-left:auto;">Pending</span>
+    </div>
+    <div class="oi-quote">"WebAssembly always falls back to JS — and a question about workerName for session attribution" [issue opened]</div>
+    <div class="oi-insight">⏳ No response yet. Two questions: WASM failure cause + workerName support.</div>
+  </div>
+</div>
+
+<!-- RECOMMENDATION -->
+<div class="tab-panel" id="tab-recommendation">
+  <div class="sh mb32"><div class="sh-title">Recommendation</div><div class="sh-sub">Based on empirical benchmarks · May 2026</div></div>
+
+  <div class="rec-box winner mb20">
+    <span class="tag tag-green" style="margin-bottom:10px;display:inline-block;">Current Winner</span>
+    <h3>randomx.js — l1mey112</h3>
+    <p style="font-size:13px;color:var(--ink2);line-height:1.7;margin-bottom:16px;">Only browser script with working RandomX WASM. 38.64 H/s peak, 2.1× higher than opd-ai JS fallback. 22× faster startup (1.5s vs 33s). Accepted shares confirmed. Requires custom Node.js server. v2 with softfloat fix in development — potential 2-4× improvement.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><span class="tag tag-green">38.64 H/s peak</span><span class="tag tag-green">WASM ✓</span><span class="tag tag-green">Shares accepted</span><span class="tag tag-gold">v2 coming</span></div>
+  </div>
+
+  <div class="rec-box mb20">
+    <span class="tag tag-gold" style="margin-bottom:10px;display:inline-block;">May Supersede — Test Pending</span>
+    <h3>Crypto-Webminer Flex/zpool</h3>
+    <p style="font-size:13px;color:var(--ink2);line-height:1.7;margin-bottom:16px;">Developer claims 30-50% higher profitability via auto-algo switching. GhostRider has no 2GB memory constraint — runs efficiently in WASM. If claim holds, becomes primary recommendation. Blocked by CDN SSL issues.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><span class="tag tag-gold">Untested</span><span class="tag tag-gold">+30-50% claim</span><span class="tag tag-red">CDN blocked</span></div>
+  </div>
+
+  <div class="rec-box mb32">
+    <span class="tag tag-gray" style="margin-bottom:10px;display:inline-block;">Conditional</span>
+    <h3>opd-ai/webminer</h3>
+    <p style="font-size:13px;color:var(--ink2);line-height:1.7;margin-bottom:16px;">Best consent UX + health monitoring but WASM permanently unavailable for RandomX. 33s startup kills short sessions. Recommended only if: WASM issue resolved, OR used as UX layer wrapping randomx.js hashing engine.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><span class="tag tag-green">Best consent UX</span><span class="tag tag-red">WASM broken</span><span class="tag tag-red">33s startup</span></div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">Decision Tree</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;">
+      <tr style="border-bottom:1px solid var(--border);"><td style="padding:9px 0;color:var(--ink2);width:40%;">Need production today?</td><td style="padding:9px 0;color:var(--green);">→ randomx.js + our server stack</td></tr>
+      <tr style="border-bottom:1px solid var(--border);"><td style="padding:9px 0;color:var(--ink2);">Can wait for v2?</td><td style="padding:9px 0;color:var(--gold);">→ randomx.js v2 (softfloat) — 2-4× improvement incoming</td></tr>
+      <tr style="border-bottom:1px solid var(--border);"><td style="padding:9px 0;color:var(--ink2);">PiTi fixes CDN?</td><td style="padding:9px 0;color:var(--gold);">→ Test Flex/zpool immediately — may be 30-50% more revenue</td></tr>
+      <tr><td style="padding:9px 0;color:var(--ink2);">opd-ai responds?</td><td style="padding:9px 0;color:var(--blue);">→ Re-evaluate as WASM engine + best consent UX layer</td></tr>
+    </table>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<script>
+// ── TAB NAV ──────────────────────────────────────────────────────────────────
+function showTab(id,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── COIN PRESETS ─────────────────────────────────────────────────────────────
+const COINS = {
+  XMR:  { name:'Monero (XMR)',  network_hs:5590000000, daily:468,    price:385,   hint:'RandomX · ASIC-resistant · Binance delisted Feb 2024' },
+  RTM:  { name:'Raptoreum (RTM)', network_hs:950000000, daily:86400,  price:0.0008,hint:'GhostRider · Used by Crypto-Webminer' },
+  DASH_ZPOOL: { name:'DASH via zpool Flex', network_hs:null, daily:null, price:32, hint:'⚠️ Auto-algo — no single network hashrate. Using XMR equivalent + 40% profitability uplift estimate.' },
+  custom:{ name:'Custom', network_hs:0, daily:0, price:0, hint:'Enter values manually' }
+};
+
+// ── BENCHMARK RESULTS ────────────────────────────────────────────────────────
+let benchmarkResults = [];
+
+// Built-in results (fallback if JSON can't be fetched)
+const BUILTIN_RESULTS = [
+  { id:'randomx-max-FINAL', label:'randomx.js — 6 threads optimized', avg_hs:31.02, peak_hs:38.64, coin:'XMR', algo:'RandomX', date:'2026-05-18', notes:'6 Web Workers · JIT WASM' },
+  { id:'opd-webminer-FINAL', label:'opd-ai/webminer — JS fallback', avg_hs:8.70, peak_hs:18.53, coin:'XMR', algo:'RandomX', date:'2026-05-18', notes:'JS fallback only' },
+  { id:'custom-manual', label:'Custom / enter manually', avg_hs:0, peak_hs:0, coin:'XMR', algo:'', date:'', notes:'' },
+];
+
+async function loadBenchmarkResults() {
+  try {
+    const res = await fetch('./benchmark/results/benchmark-results.json');
+    if (res.ok) {
+      const data = await res.json();
+      benchmarkResults = [...data.results, { id:'custom-manual', label:'Custom / enter manually', avg_hs:0, peak_hs:0, coin:'XMR', algo:'', date:'', notes:'' }];
+    } else { throw new Error('fetch failed'); }
+  } catch(e) {
+    benchmarkResults = BUILTIN_RESULTS;
+  }
+  populateScriptDropdown();
+}
+
+function populateScriptDropdown() {
+  const sel = document.getElementById('calc-script');
+  sel.innerHTML = benchmarkResults.map(r =>
+    `<option value="${r.id}">${r.label}${r.date ? ' ('+r.date+')' : ''}</option>`
+  ).join('');
+  onScriptChange();
+}
+
+function onScriptChange() {
+  const id = document.getElementById('calc-script').value;
+  const result = benchmarkResults.find(r => r.id === id);
+  if (!result) return;
+
+  if (result.avg_hs > 0) {
+    document.getElementById('calc-hs').value = result.avg_hs;
+    document.getElementById('script-hint').textContent = `Peak: ${result.peak_hs} H/s · Algo: ${result.algo} · ${result.notes}`;
+  } else {
+    document.getElementById('script-hint').textContent = 'Enter H/s manually above';
+  }
+
+  // Auto-select matching coin if result specifies one
+  if (result.coin && COINS[result.coin]) {
+    document.getElementById('calc-coin').value = result.coin;
+    onCoinChange();
+  } else {
+    calculate();
+  }
+}
+
+function onCoinChange() {
+  const coin = document.getElementById('calc-coin').value;
+  const c = COINS[coin];
+  if (!c) return;
+
+  const notice = document.getElementById('coin-notice');
+
+  if (coin === 'DASH_ZPOOL') {
+    // Use XMR equivalent + uplift
+    document.getElementById('calc-network').value = COINS.XMR.network_hs;
+    document.getElementById('calc-daily').value = COINS.XMR.daily;
+    document.getElementById('calc-price').value = c.price;
+    notice.style.display = 'block';
+    notice.textContent = '⚠️ zpool Flex uses auto-algo switching — no single network hashrate. Showing XMR-equivalent + ~40% profitability uplift applied to output. Verify with real test data when available.';
+  } else if (coin !== 'custom') {
+    document.getElementById('calc-network').value = c.network_hs;
+    document.getElementById('calc-daily').value = c.daily;
+    document.getElementById('calc-price').value = c.price;
+    notice.style.display = 'none';
+  } else {
+    notice.style.display = 'none';
+  }
+
+  document.getElementById('coin-hint').textContent = c.hint || '';
+  calculate();
+}
+
+// ── CALCULATOR ────────────────────────────────────────────────────────────────
+function calculate() {
+  const seconds  = parseFloat(document.getElementById('calc-seconds').value) || 0;
+  const hs       = parseFloat(document.getElementById('calc-hs').value) || 0;
+  const networkHs= parseFloat(document.getElementById('calc-network').value) || 1;
+  const daily    = parseFloat(document.getElementById('calc-daily').value) || 0;
+  const price    = parseFloat(document.getElementById('calc-price').value) || 0;
+  const coin     = document.getElementById('calc-coin').value;
+  const zPoolUplift = coin === 'DASH_ZPOOL' ? 1.40 : 1.0;
+
+  // Revenue per single session (1 visitor, session_seconds long)
+  const share = hs / networkHs;
+  const coinPerSession = share * daily * (seconds / 86400);
+  const usdPerSession = coinPerSession * price * zPoolUplift;
+
+  // Per 1,000 sessions
+  const usdPer1000Sessions = usdPerSession * 1000;
+
+  // Per timeframe (assuming 1,000 sessions happen within that timeframe)
+  const sessionsPerMin  = 1000;
+  const sessionsPerHour = 1000;
+  const sessionsPerDay  = 1000;
+
+  const usdPerMin  = usdPer1000Sessions / (seconds / 60);
+  const usdPerHour = usdPerMin * 60;
+  const usdPerDay  = usdPerHour * 24;
+  const usdPerMonth= usdPerDay * 30;
+
+  const fmt = (v, d=4) => '$' + v.toFixed(d);
+
+  const usdPerSec = usdPerMin / 60;
+  document.getElementById('out-sec').textContent  = fmt(usdPerSec, 7);
+  document.getElementById('out-min').textContent  = fmt(usdPerMin, 4);
+  document.getElementById('out-hour').textContent = fmt(usdPerHour, 3);
+  document.getElementById('out-day').textContent  = fmt(usdPerDay, 2);
+}
+
+// ── IMPORT NEW RESULT ─────────────────────────────────────────────────────────
+function importResult() {
+  const raw = document.getElementById('import-json').value.trim();
+  const fb  = document.getElementById('import-feedback');
+
+  try {
+    const result = JSON.parse(raw);
+    if (!result.id || !result.label) throw new Error('Missing required fields: id, label');
+    if (typeof result.avg_hs !== 'number') throw new Error('avg_hs must be a number');
+
+    // Remove existing entry with same id
+    benchmarkResults = benchmarkResults.filter(r => r.id !== result.id && r.id !== 'custom-manual');
+    benchmarkResults.push(result);
+    // Keep custom-manual at end
+    benchmarkResults.push({ id:'custom-manual', label:'Custom / enter manually', avg_hs:0, peak_hs:0, coin:'XMR', algo:'', date:'', notes:'' });
+
+    populateScriptDropdown();
+
+    // Auto-select the imported result
+    document.getElementById('calc-script').value = result.id;
+    onScriptChange();
+
+    fb.style.display = 'block';
+    fb.style.color = 'var(--green)';
+    fb.textContent = `✓ "${result.label}" added to dropdown. To persist: save as benchmark/results/${result.id}.json and add to benchmark-results.json.`;
+    document.getElementById('import-json').value = '';
+  } catch(e) {
+    fb.style.display = 'block';
+    fb.style.color = 'var(--red)';
+    fb.textContent = '✗ Invalid JSON: ' + e.message;
+  }
+}
+
+// ── SCRIPT CARDS ──────────────────────────────────────────────────────────────
+const scripts = [
+  { name:'randomx.js', repo:'l1mey112/randomx.js', icon:'🔬', winner:true,
+    algo:'RandomX', coin:'XMR', wasm:true, startup:'1,496ms',
+    avgHs:'31.02', peakHs:'38.64', shares:'2', threads:'6',
+    scores:{session:5,scale:4,health:3,blocker:4},
+    verdict:'VIABLE', verdictClass:'tag-green',
+    chain:[{l:'Page Load',ok:true},{l:'session_id',ok:true},{l:'server.worker',ok:true},{l:'Pool TCP',ok:true},{l:'Per-worker ✓',ok:true},{l:'Attribution',ok:true}],
+    pros:'Only browser RandomX WASM · 2.1× higher H/s than opd-ai · 22× faster startup · Shares accepted · Full infrastructure control · v2 in dev',
+    cons:'Requires Node.js server · Archived repo · No consent UI built-in · randomx.js-shared needs source build' },
+  { name:'opd-ai/webminer', repo:'opd-ai/webminer', icon:'⚙️', winner:false,
+    algo:'RandomX', coin:'XMR', wasm:false, startup:'33,445ms',
+    avgHs:'8.70', peakHs:'18.53', shares:'0', threads:'Internal',
+    scores:{session:3,scale:4,health:5,blocker:3},
+    verdict:'PARTIAL', verdictClass:'tag-gold',
+    chain:[{l:'Page Load',ok:true},{l:'session_id',ok:true},{l:'wallet.worker hack',ok:false},{l:'Proxy',ok:true},{l:'Pool',ok:true},{l:'Per-worker ✓',ok:true}],
+    pros:'Best consent-first UX · Battery/thermal aware · Health monitoring · getStats() · Auto-reconnect',
+    cons:'WASM permanently unavailable for RandomX · 33s startup kills short sessions · No first-class workerName · 0 shares accepted' },
+  { name:'Crypto-Webminer', repo:'PiTi2k5/Crypto-Webminer', icon:'🌐', winner:false,
+    algo:'GhostRider / Flex', coin:'RTM / DASH (zpool)', wasm:null, startup:'—',
+    avgHs:'—', peakHs:'—', shares:'—', threads:'—',
+    scores:{session:3,scale:2,health:2,blocker:1},
+    verdict:'UNTESTED', verdictClass:'tag-gold',
+    chain:[{l:'Page Load',ok:false},{l:'CDN SSL broken',ok:false},{l:'ISP blocked',ok:false}],
+    pros:'Developer recommends Flex/zpool for +30-50% profitability · GhostRider WASM efficient · Discord support · MIT license',
+    cons:'All CDN domains SSL cert broken · ISP-level blocked · Scale-hostile for high-cardinality workers' },
+  { name:'cpu-web-miner', repo:'MarcoCiaramella/cpu-web-miner', icon:'💻', winner:false,
+    algo:'GhostRider', coin:'RTM', wasm:false, startup:'586ms',
+    avgHs:'0.00', peakHs:'0.00', shares:'0', threads:'1',
+    scores:{session:5,scale:2,health:4,blocker:3},
+    verdict:'PARTIAL', verdictClass:'tag-red',
+    chain:[{l:'Page Load',ok:true},{l:'session_id',ok:true},{l:'stratum.worker ✓',ok:true},{l:'Relay',ok:true},{l:'Jobs received',ok:true},{l:'No hashes',ok:false}],
+    pros:'Best explicit stratum.worker field · Fast 586ms startup · onWork callbacks fired · Jobs received',
+    cons:'WASM hashing never fired · 3rd-party relay dependency · Fee conflict 1% vs 10%' },
+];
+
+const sg = document.getElementById('script-grid');
+scripts.forEach(s => {
+  const wasmTag = s.wasm===true?'<span class="tag tag-green">WASM ✓</span>':s.wasm===false?'<span class="tag tag-red">JS only</span>':'<span class="tag tag-gray">Untested</span>';
+  const div = document.createElement('div');
+  div.className = 'script-card' + (s.winner?' winner':'');
+  div.innerHTML = `
+    <div class="script-header">
+      <div class="script-icon">${s.icon}</div>
+      <div style="flex:1">
+        <div class="script-name">${s.name}</div>
+        <div class="script-repo">${s.repo}</div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          ${s.winner?'<div class="script-winner-badge">⭐ Current Winner</div>':''}
+          ${wasmTag}
+          <span class="tag ${s.verdictClass}">${s.verdict}</span>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:'DM Mono',monospace;font-size:32px;color:${s.winner?'var(--gold)':'var(--ink)'};">${s.peakHs}<span style="font-size:12px;color:var(--ink3);"> H/s</span></div>
+        <div style="font-size:10px;color:var(--ink3);">peak · ${s.algo}</div>
+      </div>
+    </div>
+    <div class="script-body">
+      <div class="grid2" style="gap:20px;">
+        <div>
+          <div class="bench-row"><span class="bench-k">Startup</span><span class="bench-v ${s.startup==='1,496ms'?'good':s.startup==='33,445ms'?'bad':''}">${s.startup}</span></div>
+          <div class="bench-row"><span class="bench-k">Avg H/s</span><span class="bench-v good">${s.avgHs}</span></div>
+          <div class="bench-row"><span class="bench-k">Peak H/s</span><span class="bench-v good">${s.peakHs}</span></div>
+          <div class="bench-row"><span class="bench-k">Shares</span><span class="bench-v ${s.shares==='2'?'good':s.shares==='0'?'warn':''}">${s.shares}</span></div>
+          <div class="bench-row"><span class="bench-k">Threads</span><span class="bench-v">${s.threads}</span></div>
+          <div class="bench-row"><span class="bench-k">Coin</span><span class="bench-v">${s.coin}</span></div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Scores /5</div>
+          ${[['Session Tracking',s.scores.session],['Scale Readiness',s.scores.scale],['Health API',s.scores.health],['Blocker Resistance',s.scores.blocker]].map(([l,v])=>`
+          <div class="score-row">
+            <div class="score-label">${l}</div>
+            <div class="score-track"><div class="score-fill" style="width:${v*20}%;background:${v>=4?'var(--green)':v>=3?'var(--gold)':'var(--red)'};"></div></div>
+            <div class="score-val" style="color:${v>=4?'var(--green)':v>=3?'var(--gold)':'var(--red)'};">${v}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="chain-wrap">
+        <div class="chain-label">Session Tracking Chain</div>
+        <div class="chain-steps">${s.chain.map((c,i)=>`<span class="chain-step ${c.ok?'chain-ok':'chain-broken'}">${c.l}</span>${i<s.chain.length-1?'<span class="chain-arr"> → </span>':''}`).join('')}</div>
+      </div>
+      <div class="grid2" style="gap:12px;margin-top:14px;">
+        <div style="background:var(--green-bg);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:9px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">✓ Pros</div>
+          <div style="font-size:11px;color:var(--ink2);line-height:1.6;">${s.pros}</div>
+        </div>
+        <div style="background:var(--red-bg);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:9px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">✗ Cons</div>
+          <div style="font-size:11px;color:var(--ink2);line-height:1.6;">${s.cons}</div>
+        </div>
+      </div>
+    </div>`;
+  sg.appendChild(div);
+});
+
+// ── COMPARE TABLE ─────────────────────────────────────────────────────────────
+const compareRows = [
+  ['Algorithm','RandomX','RandomX','GhostRider/Flex','GhostRider'],
+  ['Last Update','Oct 2025','Feb 2026 (archived)','Oct 2025','Jan 2026'],
+  ['WASM Status','❌ JS fallback','✅ JIT WASM','⚠️ Untested','❌ Silent fail'],
+  ['Peak H/s','18.53','38.64','—','0'],
+  ['Avg H/s','8.70','31.02','—','0'],
+  ['Startup Latency','33,445ms','1,496ms','—','586ms'],
+  ['Shares Accepted','0','2 ✓','—','0'],
+  ['Worker/Session','wallet string','server-side ✓','wallet string','stratum.worker ✓'],
+  ['Self-Hostable','✅','✅','✅ (needs file)','✅'],
+  ['Consent UI','✅ built-in','❌','✅ built-in','❌'],
+  ['Battery/Thermal','✅','❌','❌','❌'],
+  ['CDN/Delivery','CDN ✅','npm ✅','CDN broken ❌','npm ✅'],
+  ['License','Inconsistent ⚠️','Open source','MIT 1% fee','1% vs 10% ⚠️'],
+];
+const cr = document.getElementById('compare-rows');
+compareRows.forEach(row => {
+  const d = document.createElement('div');
+  d.className = 'bc-row';
+  d.innerHTML = row.map((cell,i)=>`<div class="bc-cell ${i===0?'bc-label':''} ${i===2?'bc-winner':''}">${cell}</div>`).join('');
+  cr.appendChild(d);
+});
+
+// ── COIN TABLE ────────────────────────────────────────────────────────────────
+const coins=[
+  {tier:'1',coin:'Monero (XMR)',algo:'RandomX',type:'CPU',vol:'$142M',rev:'$210–240',exchanges:'KuCoin, MEXC, Gate.io, Kraken',note:'⭐ Primary · Binance delisted Feb 2024'},
+  {tier:'1',coin:'Ravencoin (RVN)',algo:'KawPow',type:'GPU',vol:'$5–8M',rev:'$45–70',exchanges:'Binance, OKX, KuCoin',note:'2nd halving Jan 2026'},
+  {tier:'1',coin:'Conflux (CFX)',algo:'Octopus',type:'GPU',vol:'$20–35M',rev:'$80–130',exchanges:'Binance, OKX, KuCoin',note:'⚠️ BSC bridge for Binance'},
+  {tier:'1',coin:'Firo (FIRO)',algo:'FiroPoW',type:'GPU',vol:'$400–700K',rev:'$30–55',exchanges:'Binance, KuCoin, Gate.io',note:''},
+  {tier:'1',coin:'Ergo (ERG)',algo:'Autolykos v2',type:'GPU',vol:'$130–180K',rev:'$20–40',exchanges:'Gate.io, KuCoin, CoinEx',note:'ASIC-resistant'},
+  {tier:'1',coin:'Iron Fish (IRON)',algo:'FishHash',type:'GPU',vol:'$12–30K',rev:'$25–45',exchanges:'KuCoin, Gate.io',note:'Gemini discovery'},
+  {tier:'1',coin:'Clore.ai (CLORE)',algo:'KawPow+Compute',type:'GPU',vol:'$750K–1.15M',rev:'$30–120*',exchanges:'MEXC, Gate.io, Bybit',note:'*Mixed PoW+rental'},
+  {tier:'1',coin:'Zano (ZANO)',algo:'ProgPowZ',type:'GPU',vol:'$650K–1.3M',rev:'$20–60',exchanges:'MEXC, TradeOgre',note:'Verify listings'},
+  {tier:'2',coin:'Zephyr (ZEPH)',algo:'RandomX',type:'CPU',vol:'$80–130K',rev:'$25–60',exchanges:'MEXC, XT.com',note:''},
+  {tier:'2',coin:'Raptoreum (RTM)',algo:'GhostRider',type:'CPU',vol:'$25–40K',rev:'$1–8',exchanges:'CoinEx, TradeOgre',note:'Used by Crypto-Webminer'},
+  {tier:'4',coin:'Kaspa (KAS)',algo:'kHeavyHash',type:'GPU',vol:'High',rev:'N/A',exchanges:'Multiple',note:'ASIC dominated'},
+  {tier:'4',coin:'Flux (FLUX)',algo:'—',type:'—',vol:'—',rev:'N/A',exchanges:'—',note:'PoW ended Oct 2025'},
+];
+const ct = document.getElementById('coin-table');
+ct.innerHTML = `<thead><tr><th>Tier</th><th>Coin</th><th>Algorithm</th><th>Type</th><th>24h Vol</th><th>Rev/1K PCs/day</th><th>Exchanges</th><th>Notes</th></tr></thead><tbody>${
+  coins.map(c=>`<tr>
+    <td><span class="tag ${c.tier==='1'?'tag-green':c.tier==='2'?'tag-gold':'tag-red'}">T${c.tier}</span></td>
+    <td style="font-weight:600">${c.coin}</td>
+    <td><span class="algo-chip">${c.algo}</span></td>
+    <td>${c.type}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px;">${c.vol}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green);">$${c.rev}/day</td>
+    <td style="font-size:11px;color:var(--ink2);">${c.exchanges}</td>
+    <td style="font-size:11px;color:var(--ink3);">${c.note}</td>
+  </tr>`).join('')
+}</tbody>`;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadBenchmarkResults();
+</script>
+</body>
+</html>

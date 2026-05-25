@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MAX — randomx.js (6 threads)</title>
+<style>
+  body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 24px; max-width: 900px; margin: 0 auto; }
+  h1 { color: #a78bfa; font-size: 18px; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 12px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .metric { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 12px; }
+  .metric-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .07em; }
+  .metric-value { font-size: 18px; color: #fff; margin-top: 4px; }
+  .metric-value.good { color: #4fc; }
+  .metric-value.purple { color: #a78bfa; }
+  button { background: #a78bfa; color: #000; border: none; border-radius: 4px; padding: 10px 24px; font-size: 14px; font-weight: bold; cursor: pointer; margin-right: 8px; }
+  button:disabled { background: #444; color: #888; cursor: not-allowed; }
+  button.stop { background: #f44; color: #fff; }
+  .log { background: #111; border: 1px solid #222; border-radius: 6px; padding: 12px; height: 220px; overflow-y: auto; font-size: 11px; color: #aaa; margin-top: 16px; }
+  .log .entry { margin-bottom: 3px; }
+  .log .entry.good { color: #4fc; }
+  .log .entry.warn { color: #f0c040; }
+  .log .entry.bad { color: #f44; }
+  .log .entry.purple { color: #a78bfa; }
+  .results { background: #1a1a1a; border: 1px solid #a78bfa; border-radius: 6px; padding: 16px; margin-top: 16px; display: none; }
+  .results h3 { color: #a78bfa; margin: 0 0 12px; font-size: 14px; }
+  .results table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .results td { padding: 6px 8px; border-bottom: 1px solid #222; }
+  .results td:first-child { color: #888; width: 220px; }
+  .results td:last-child { color: #fff; font-weight: bold; }
+  .copy-btn { background: #333; color: #ccc; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin-top: 10px; }
+  .highlight { background: #1a0a3a; border: 1px solid #a78bfa; border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 12px; color: #a78bfa; }
+  .thread-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
+  .thread-card { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 8px; text-align: center; }
+  .thread-card .t-label { font-size: 9px; color: #888; text-transform: uppercase; }
+  .thread-card .t-value { font-size: 13px; color: #a78bfa; margin-top: 2px; }
+  progress { width: 100%; height: 8px; margin-top: 8px; accent-color: #a78bfa; }
+</style>
+</head>
+<body>
+<h1>⚡ randomx.js — MAX Performance v2 — Optimized (6 Workers)</h1>
+<div class="subtitle">RandomX / XMR · JIT WASM · 6 threads · No throttle · 90s · ws://localhost:8081</div>
+<div class="highlight">
+  🔥 <strong>Maximum performance mode:</strong> 6 Web Workers in parallel background threads.
+  No throttling. Each worker runs its own RandomX VM. WASM + SharedArrayBuffer confirmed ✓
+</div>
+<div class="grid">
+  <div class="metric"><div class="metric-label">Status</div><div class="metric-value" id="status">Idle</div></div>
+  <div class="metric"><div class="metric-label">Total Hashrate</div><div class="metric-value purple" id="hashrate">— H/s</div></div>
+  <div class="metric"><div class="metric-label">Elapsed</div><div class="metric-value" id="elapsed">0s</div></div>
+  <div class="metric"><div class="metric-label">Samples</div><div class="metric-value" id="samples">0</div></div>
+</div>
+<div class="grid">
+  <div class="metric"><div class="metric-label">Peak H/s</div><div class="metric-value good" id="peak">—</div></div>
+  <div class="metric"><div class="metric-label">Avg H/s</div><div class="metric-value good" id="avg">—</div></div>
+  <div class="metric"><div class="metric-label">Startup Latency</div><div class="metric-value" id="startup">—</div></div>
+  <div class="metric"><div class="metric-label">Shares Accepted</div><div class="metric-value good" id="shares">0</div></div>
+</div>
+<div class="thread-grid" id="thread-grid"></div>
+<progress id="progress" value="0" max="90"></progress>
+<div style="margin-top: 16px;">
+  <button id="btn-start" onclick="startTest()">▶ Start 90s Test</button>
+  <button id="btn-stop" class="stop" onclick="stopTest()" disabled>■ Stop</button>
+</div>
+<div class="log" id="log"></div>
+<div class="results" id="results">
+  <h3>📋 Results — Copy to Comparison Sheet</h3>
+  <table id="results-table"></table>
+  <button class="copy-btn" onclick="copyResults()">📋 Copy JSON to Clipboard</button>
+</div>
+<script>
+const NUM_THREADS = 6;
+const WORKER = 'bench_session_001';
+const DURATION_S = 90;
+const SAMPLE_INTERVAL_MS = 5000;
+const WS_URL = 'ws://localhost:8081';
+
+let ws = null;
+let workers = [];
+let threadHashrates = new Array(NUM_THREADS).fill(0);
+let startTime = null;
+let firstHashTime = null;
+let samples = [];
+let acceptedShares = 0;
+let sampleTimer = null;
+let progressTimer = null;
+let autoStopTimer = null;
+let running = false;
+let currentJob = null;
+let workersReady = 0;
+
+const tg = document.getElementById('thread-grid');
+for (let i = 0; i < NUM_THREADS; i++) {
+  tg.innerHTML += `<div class="thread-card"><div class="t-label">Thread ${i+1}</div><div class="t-value" id="t${i}">—</div></div>`;
+}
+
+function log(msg, type = '') {
+  const el = document.getElementById('log');
+  const ts = new Date().toISOString().substr(11, 8);
+  const div = document.createElement('div');
+  div.className = 'entry ' + type;
+  div.textContent = `[${ts}] ${msg}`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function getTotalHashrate() { return threadHashrates.reduce((a,b) => a+b, 0); }
+
+function createWorker(threadId) {
+  const worker = new Worker('/randomx-worker-v3-clean.js', { type: 'module' });
+  worker.onmessage = (e) => {
+    const msg = e.data;
+    if (msg.type === 'ready') log(`Thread ${threadId+1} loaded ✓`, 'purple');
+    if (msg.type === 'vm_ready') {
+      workersReady++;
+      log(`Thread ${threadId+1} VM ready ✓ (${workersReady}/${NUM_THREADS})`, 'good');
+      if (!firstHashTime) {
+        firstHashTime = Date.now();
+        document.getElementById('startup').textContent = (firstHashTime - startTime) + 'ms';
+      }
+      if (currentJob) worker.postMessage({ type: 'job', job: currentJob });
+      document.getElementById('status').textContent = `Mining (${workersReady}/${NUM_THREADS} threads)`;
+    }
+    if (msg.type === 'hashrate') {
+      threadHashrates[threadId] = msg.hashrate;
+      const el = document.getElementById(`t${threadId}`);
+      if (el) el.textContent = msg.hashrate.toFixed(1) + ' H/s';
+      document.getElementById('hashrate').textContent = getTotalHashrate().toFixed(2) + ' H/s';
+    }
+    if (msg.type === 'share') {
+      log(`Thread ${threadId+1} found share! nonce: ${msg.nonce}`, 'good');
+      ws?.send(JSON.stringify({ type: 'share', ...msg }));
+    }
+    if (msg.type === 'error') log(`Thread ${threadId+1} error: ${msg.msg}`, 'bad');
+  };
+  worker.onerror = (e) => log(`Thread ${threadId+1} worker error: ${e.message}`, 'bad');
+  return worker;
+}
+
+function startTest() {
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  running = true;
+  startTime = Date.now();
+  samples = []; acceptedShares = 0; workersReady = 0;
+  threadHashrates = new Array(NUM_THREADS).fill(0);
+  log(`Starting ${NUM_THREADS}-thread RandomX max performance test...`, 'purple');
+  document.getElementById('status').textContent = 'Connecting';
+
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => {
+    log('Connected to server ✓', 'good');
+    document.getElementById('status').textContent = 'Spawning workers';
+    for (let i = 0; i < NUM_THREADS; i++) workers.push(createWorker(i));
+    log(`${NUM_THREADS} workers spawned — waiting for job...`, 'warn');
+  };
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'job') {
+        const isFirstJob = !currentJob;
+        currentJob = msg.job;
+        if (isFirstJob) {
+          log(`First job: ${msg.job?.job_id} — initializing ${NUM_THREADS} VMs...`, 'good');
+          workers.forEach((w, i) => {
+            w.postMessage({ type: 'init', seedHash: msg.job.seed_hash, threadId: i, totalThreads: NUM_THREADS });
+          });
+        } else {
+          log(`New job: ${msg.job?.job_id} — updating workers`, 'warn');
+          workers.forEach((w, i) => {
+            w.postMessage({ type: 'job', job: msg.job });
+          });
+        }
+      }
+      if (msg.type === 'share_accepted') {
+        acceptedShares = msg.total;
+        document.getElementById('shares').textContent = acceptedShares;
+        log(`Share accepted ✓ (total: ${acceptedShares})`, 'good');
+      }
+    } catch(e) { log('WS error: ' + e.message, 'bad'); }
+  };
+  ws.onerror = () => { log('WebSocket error — is randomx-server.js running?', 'bad'); document.getElementById('status').textContent = 'Error'; };
+  ws.onclose = () => { if (running) log('Server disconnected', 'warn'); };
+
+  sampleTimer = setInterval(() => {
+    const total = getTotalHashrate();
+    samples.push(total);
+    document.getElementById('samples').textContent = samples.length;
+    const peak = Math.max(...samples);
+    const avg = samples.reduce((a,b)=>a+b,0) / samples.length;
+    document.getElementById('peak').textContent = peak.toFixed(2) + ' H/s';
+    document.getElementById('avg').textContent = avg.toFixed(2) + ' H/s';
+    log(`Sample ${samples.length}: ${total.toFixed(2)} H/s`, total > 0 ? 'good' : 'warn');
+  }, SAMPLE_INTERVAL_MS);
+
+  progressTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('elapsed').textContent = elapsed + 's';
+    document.getElementById('progress').value = elapsed;
+  }, 500);
+
+  autoStopTimer = setTimeout(() => stopTest(), DURATION_S * 1000);
+}
+
+function stopTest() {
+  if (!running) return;
+  running = false;
+  workers.forEach(w => { w.postMessage({ type: 'stop' }); w.terminate(); });
+  workers = [];
+  clearInterval(sampleTimer); clearInterval(progressTimer); clearTimeout(autoStopTimer);
+  ws?.close();
+  document.getElementById('status').textContent = 'Done';
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('btn-start').disabled = false;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  log(`Test complete — ${elapsed}s · ${samples.length} samples · ${acceptedShares} shares`, 'good');
+  showResults(elapsed);
+}
+
+function showResults(elapsed) {
+  const peak = samples.length ? Math.max(...samples) : 0;
+  const avg = samples.length ? samples.reduce((a,b)=>a+b,0)/samples.length : 0;
+  const rows = [
+    ['Script', 'l1mey112/randomx.js'],
+    ['Algorithm', 'RandomX / XMR'],
+    ['WASM', 'JIT-generated ✓'],
+    ['Threads', NUM_THREADS],
+    ['Test Duration (s)', elapsed],
+    ['Startup Latency (ms)', document.getElementById('startup').textContent],
+    ['Avg Hashrate (H/s)', avg.toFixed(2)],
+    ['Peak Hashrate (H/s)', peak.toFixed(2)],
+    ['Per-thread avg (H/s)', (avg/NUM_THREADS).toFixed(2)],
+    ['Samples Collected', samples.length],
+    ['Shares Accepted', acceptedShares],
+    ['Worker Name', WORKER],
+    ['All Samples (H/s)', samples.map(s=>s.toFixed(2)).join(', ')],
+  ];
+  const table = document.getElementById('results-table');
+  table.innerHTML = rows.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  document.getElementById('results').style.display = 'block';
+}
+
+function copyResults() {
+  const peak = samples.length ? Math.max(...samples) : 0;
+  const avg = samples.length ? samples.reduce((a,b)=>a+b,0)/samples.length : 0;
+  navigator.clipboard.writeText(JSON.stringify({
+    script: 'l1mey112/randomx.js', algo: 'RandomX', wasm: 'JIT',
+    threads: NUM_THREADS, timestamp: new Date().toISOString(),
+    startup_ms: document.getElementById('startup').textContent,
+    avg_hashrate: avg.toFixed(2), peak_hashrate: peak.toFixed(2),
+    per_thread_avg: (avg/NUM_THREADS).toFixed(2),
+    samples, accepted_shares: acceptedShares, worker: WORKER
+  }, null, 2));
+  alert('Copied!');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Benchmark — MarcoCiaramella/cpu-web-miner</title>
+<style>
+  body { font-family: monospace; background: #0f0f0f; color: #e0e0e0; padding: 24px; max-width: 900px; margin: 0 auto; }
+  h1 { color: #f0c040; font-size: 18px; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 12px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .metric { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 12px; }
+  .metric-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .07em; }
+  .metric-value { font-size: 18px; color: #fff; margin-top: 4px; }
+  .metric-value.good { color: #4fc; }
+  button { background: #f0c040; color: #000; border: none; border-radius: 4px; padding: 10px 24px; font-size: 14px; font-weight: bold; cursor: pointer; margin-right: 8px; }
+  button:disabled { background: #444; color: #888; cursor: not-allowed; }
+  button.stop { background: #f44; color: #fff; }
+  .log { background: #111; border: 1px solid #222; border-radius: 6px; padding: 12px; height: 220px; overflow-y: auto; font-size: 11px; color: #aaa; margin-top: 16px; }
+  .log .entry { margin-bottom: 3px; }
+  .log .entry.good { color: #4fc; }
+  .log .entry.warn { color: #f0c040; }
+  .log .entry.bad { color: #f44; }
+  .results { background: #1a1a1a; border: 1px solid #4fc; border-radius: 6px; padding: 16px; margin-top: 16px; display: none; }
+  .results h3 { color: #4fc; margin: 0 0 12px; font-size: 14px; }
+  .results table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .results td { padding: 6px 8px; border-bottom: 1px solid #222; }
+  .results td:first-child { color: #888; width: 220px; }
+  .results td:last-child { color: #fff; font-weight: bold; }
+  .copy-btn { background: #333; color: #ccc; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin-top: 10px; }
+  .worker-check { background: #001a0a; border: 1px solid #4fc; border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 12px; color: #4fc; }
+  progress { width: 100%; height: 8px; margin-top: 8px; accent-color: #f0c040; }
+</style>
+</head>
+<body>
+
+<h1>⚙️ MarcoCiaramella/cpu-web-miner — Benchmark Harness</h1>
+<div class="subtitle">Script 3 of 3 · GhostRider · 3rd-party relay · Duration: 90s · 1 thread</div>
+
+<div class="worker-check">
+  ✓ <strong>Best session plumbing:</strong> stratum.worker = "bench_session_001" set directly — no wallet string workaround needed.
+</div>
+
+<div class="grid">
+  <div class="metric"><div class="metric-label">Status</div><div class="metric-value" id="status">Idle</div></div>
+  <div class="metric"><div class="metric-label">Hashrate</div><div class="metric-value" id="hashrate">— H/s</div></div>
+  <div class="metric"><div class="metric-label">Elapsed</div><div class="metric-value" id="elapsed">0s</div></div>
+  <div class="metric"><div class="metric-label">Samples</div><div class="metric-value" id="samples">0</div></div>
+</div>
+<div class="grid">
+  <div class="metric"><div class="metric-label">Peak H/s</div><div class="metric-value good" id="peak">—</div></div>
+  <div class="metric"><div class="metric-label">Avg H/s</div><div class="metric-value good" id="avg">—</div></div>
+  <div class="metric"><div class="metric-label">Startup Latency</div><div class="metric-value" id="startup">—</div></div>
+  <div class="metric"><div class="metric-label">onWork Callbacks</div><div class="metric-value" id="callbacks">0</div></div>
+</div>
+
+<progress id="progress" value="0" max="90"></progress>
+
+<div style="margin-top: 16px;">
+  <button id="btn-start" onclick="startTest()">▶ Start 90s Test</button>
+  <button id="btn-stop" class="stop" onclick="stopTest()" disabled>■ Stop</button>
+</div>
+
+<div class="log" id="log"></div>
+
+<div class="results" id="results">
+  <h3>📋 Results — Copy to Comparison Sheet</h3>
+  <table id="results-table"></table>
+  <button class="copy-btn" onclick="copyResults()">📋 Copy JSON to Clipboard</button>
+</div>
+
+<script type="module">
+import * as cpuWebMiner from 'https://esm.run/@marco_ciaramella/cpu-web-miner';
+
+const WORKER = 'bench_session_001';
+const DURATION_S = 90;
+const SAMPLE_INTERVAL_MS = 5000;
+
+let startTime = null;
+let firstHashTime = null;
+let samples = [];
+let onWorkCount = 0;
+let onHashrateCount = 0;
+let sampleTimer = null;
+let progressTimer = null;
+let autoStopTimer = null;
+let running = false;
+let lastHashrate = 0;
+
+function log(msg, type = '') {
+  const el = document.getElementById('log');
+  const ts = new Date().toISOString().substr(11, 8);
+  const div = document.createElement('div');
+  div.className = 'entry ' + type;
+  div.textContent = `[${ts}] ${msg}`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+window.startTest = async function() {
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  running = true;
+  startTime = Date.now();
+  samples = [];
+  onWorkCount = 0;
+  onHashrateCount = 0;
+
+  log('Initializing cpu-web-miner...', 'warn');
+  document.getElementById('status').textContent = 'Initializing';
+
+  try {
+    const stratum = {
+      server: 'europe.raptoreum.zone',
+      port: 3333,
+      worker: WORKER,
+      password: 'x',
+      ssl: false
+    };
+
+    log(`stratum.worker = "${WORKER}" ← direct field assignment ✓`, 'good');
+    log('Relay: wss://websocket-stratum-server.com (hardcoded in lib)', 'warn');
+    log(`Module loaded: ${typeof cpuWebMiner}`, 'good');
+    log(`Available exports: ${Object.keys(cpuWebMiner).join(', ')}`, 'good');
+
+    cpuWebMiner.start(
+      cpuWebMiner.ghostrider,
+      stratum,
+      null,
+      cpuWebMiner.ALL_THREADS,
+      (work) => {
+        onWorkCount++;
+        document.getElementById('callbacks').textContent = onWorkCount;
+        if (!firstHashTime) {
+          firstHashTime = Date.now();
+          const latency = firstHashTime - startTime;
+          document.getElementById('startup').textContent = latency + 'ms';
+          log(`First work received — startup latency: ${latency}ms`, 'good');
+        }
+        log(`onWork #${onWorkCount}`, 'good');
+      },
+      (hr) => {
+        onHashrateCount++;
+        lastHashrate = parseFloat(hr) || 0;
+        document.getElementById('hashrate').textContent = lastHashrate.toFixed(2) + ' H/s';
+        log(`onHashrate #${onHashrateCount}: ${lastHashrate.toFixed(2)} H/s`, lastHashrate > 0 ? 'good' : 'warn');
+      },
+      (err) => {
+        log(`onError: ${err}`, 'bad');
+      }
+    );
+
+    log('cpuWebMiner.start() called ✓', 'good');
+    document.getElementById('status').textContent = 'Mining';
+
+    sampleTimer = setInterval(() => {
+      samples.push(lastHashrate);
+      document.getElementById('samples').textContent = samples.length;
+      const peak = Math.max(...samples);
+      const avg = samples.reduce((a,b)=>a+b,0) / samples.length;
+      document.getElementById('peak').textContent = peak.toFixed(2) + ' H/s';
+      document.getElementById('avg').textContent = avg.toFixed(2) + ' H/s';
+      log(`Sample ${samples.length}: ${lastHashrate.toFixed(2)} H/s`, lastHashrate > 0 ? 'good' : 'warn');
+    }, SAMPLE_INTERVAL_MS);
+
+    progressTimer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      document.getElementById('elapsed').textContent = elapsed + 's';
+      document.getElementById('progress').value = elapsed;
+    }, 500);
+
+    autoStopTimer = setTimeout(() => window.stopTest(), DURATION_S * 1000);
+
+  } catch(e) {
+    log('ERROR: ' + e.message, 'bad');
+    log('Check console (F12) for details', 'bad');
+    document.getElementById('status').textContent = 'Error';
+  }
+};
+
+window.stopTest = function() {
+  if (!running) return;
+  running = false;
+  clearInterval(sampleTimer);
+  clearInterval(progressTimer);
+  clearTimeout(autoStopTimer);
+
+  try { cpuWebMiner.stop && cpuWebMiner.stop(); } catch(e) {}
+
+  document.getElementById('status').textContent = 'Done';
+  document.getElementById('btn-stop').disabled = true;
+  document.getElementById('btn-start').disabled = false;
+
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  log(`Test complete — ${elapsed}s · ${samples.length} samples`, 'good');
+  showResults(elapsed);
+};
+
+function showResults(elapsed) {
+  const peak = samples.length ? Math.max(...samples) : 0;
+  const avg = samples.length ? samples.reduce((a,b)=>a+b,0)/samples.length : 0;
+  const min = samples.length ? Math.min(...samples) : 0;
+
+  const rows = [
+    ['Script', 'MarcoCiaramella/cpu-web-miner'],
+    ['Algorithm', 'GhostRider'],
+    ['Test Duration (s)', elapsed],
+    ['Startup Latency (ms)', document.getElementById('startup').textContent],
+    ['Avg Hashrate (H/s)', avg.toFixed(2)],
+    ['Peak Hashrate (H/s)', peak.toFixed(2)],
+    ['Min Hashrate (H/s)', min.toFixed(2)],
+    ['Samples Collected', samples.length],
+    ['onWork Callbacks', onWorkCount],
+    ['onHashrate Callbacks', onHashrateCount],
+    ['stratum.worker', WORKER + ' ← DIRECT ✓'],
+    ['Relay', 'wss://websocket-stratum-server.com (hardcoded)'],
+    ['Errors', document.querySelectorAll('.entry.bad').length],
+    ['All Samples (H/s)', samples.map(s=>s.toFixed(2)).join(', ')],
+  ];
+
+  const table = document.getElementById('results-table');
+  table.innerHTML = rows.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  document.getElementById('results').style.display = 'block';
+}
+
+window.copyResults = function() {
+  const data = {
+    script: 'MarcoCiaramella/cpu-web-miner',
+    algo: 'GhostRider',
+    timestamp: new Date().toISOString(),
+    startup_latency_ms: document.getElementById('startup').textContent,
+    avg_hashrate: document.getElementById('avg').textContent,
+    peak_hashrate: document.getElementById('peak').textContent,
+    samples,
+    onWork_callbacks: onWorkCount,
+    onHashrate_callbacks: onHashrateCount,
+    stratum_worker: WORKER,
+    worker_method: 'DIRECT_stratum.worker_field'
+  };
+  navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+  alert('Copied to clipboard!');
+};
+</script>
+</body>
+</html>
